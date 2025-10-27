@@ -102,7 +102,6 @@ When you create a pull request, the workflow:
 The review happens automatically within minutes of creating or updating a PR.
 
 
-
 ## ✅ Test It
 
 Create a PR and the AI will automatically review it:
