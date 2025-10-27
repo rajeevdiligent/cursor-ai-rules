@@ -1,0 +1,362 @@
+name: AI Merge Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches:
+      - main
+      - master
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  statuses: write
+
+jobs:
+  architecture-guard:
+    name: Clean Architecture Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check layer dependencies
+        id: layer-check
+        run: |
+          cat > check_layers.py << 'PYTHON_SCRIPT'
+          import os
+          import re
+          import json
+          from pathlib import Path
+          from collections import defaultdict
+
+          # Define layer rules
+          LAYER_RULES = {
+              'domain': {
+                  'paths': ['domain/', 'lib/domain/', 'src/domain/'],
+                  'allowed_deps': [],
+                  'prohibited': ['database', 'api', 'http', 'express', 'fastapi', 'django', 'orm']
+              },
+              'application': {
+                  'paths': ['application/', 'use-cases/', 'src/application/', 'src/use-cases/'],
+                  'allowed_deps': ['domain'],
+                  'prohibited': ['database', 'orm', 'http-client', 'axios', 'fetch']
+              },
+              'infrastructure': {
+                  'paths': ['infrastructure/', 'src/infrastructure/', 'lib/infrastructure/'],
+                  'allowed_deps': ['domain', 'application'],
+                  'prohibited': []
+              },
+              'presentation': {
+                  'paths': ['presentation/', 'api/', 'controllers/', 'src/presentation/', 'src/api/', 'src/controllers/'],
+                  'allowed_deps': ['domain', 'application'],
+                  'prohibited': ['direct-database-access', 'typeorm', 'mongoose', 'prisma']
+              }
+          }
+
+          def get_file_layer(file_path):
+              """Determine which layer a file belongs to"""
+              for layer, config in LAYER_RULES.items():
+                  for path_pattern in config['paths']:
+                      if path_pattern in file_path:
+                          return layer
+              return None
+
+          def check_imports(file_path, content):
+              """Check imports/requires in a file"""
+              violations = []
+              
+              # Detect imports (Python, JS/TS, Java, etc.)
+              import_patterns = [
+                  r'^import\s+.*?from\s+[\'"](.+?)[\'"]',  # JS/TS
+                  r'^import\s+(.+)',  # Python, Java
+                  r'require\([\'"](.+?)[\'"]\)',  # Node.js
+                  r'^using\s+(.+?);',  # C#
+              ]
+              
+              layer = get_file_layer(file_path)
+              if not layer:
+                  return violations
+              
+              rules = LAYER_RULES[layer]
+              
+              for line_num, line in enumerate(content.split('\n'), 1):
+                  for pattern in import_patterns:
+                      matches = re.findall(pattern, line, re.IGNORECASE)
+                      for match in matches:
+                          # Check prohibited dependencies
+                          for prohibited in rules['prohibited']:
+                              if prohibited.lower() in match.lower():
+                                  violations.append({
+                                      'file': file_path,
+                                      'line': line_num,
+                                      'layer': layer,
+                                      'issue': f'Prohibited dependency: {match}',
+                                      'severity': 'error'
+                                  })
+                          
+                          # Check layer dependencies
+                          imported_layer = get_file_layer(match)
+                          if imported_layer and imported_layer not in rules['allowed_deps'] and imported_layer != layer:
+                              violations.append({
+                                  'file': file_path,
+                                  'line': line_num,
+                                  'layer': layer,
+                                  'issue': f'Invalid layer dependency: {layer} -> {imported_layer}',
+                                  'severity': 'error'
+                              })
+              
+              return violations
+
+          def scan_codebase():
+              """Scan entire codebase for violations"""
+              all_violations = []
+              
+              # Get all source files
+              extensions = ['.py', '.js', '.ts', '.tsx', '.jsx', '.java', '.go', '.cs', '.rb']
+              
+              for ext in extensions:
+                  for file_path in Path('.').rglob(f'*{ext}'):
+                      # Skip test files and node_modules
+                      if any(skip in str(file_path) for skip in ['test', 'node_modules', 'dist', 'build', '__pycache__']):
+                          continue
+                      
+                      try:
+                          content = file_path.read_text(encoding='utf-8')
+                          violations = check_imports(str(file_path), content)
+                          all_violations.extend(violations)
+                      except Exception as e:
+                          print(f"Warning: Could not read {file_path}: {e}")
+              
+              return all_violations
+
+          def main():
+              print("🔍 Scanning codebase for Clean Architecture violations...")
+              violations = scan_codebase()
+              
+              if violations:
+                  print(f"\n❌ Found {len(violations)} architecture violations:\n")
+                  for v in violations:
+                      print(f"  {v['severity'].upper()}: {v['file']}:{v['line']}")
+                      print(f"    {v['issue']}\n")
+                  
+                  # Save to file
+                  with open('architecture_violations.json', 'w') as f:
+                      json.dump({'violations': violations, 'count': len(violations)}, f, indent=2)
+                  
+                  exit(1)
+              else:
+                  print("✅ No architecture violations found!")
+                  with open('architecture_violations.json', 'w') as f:
+                      json.dump({'violations': [], 'count': 0}, f, indent=2)
+                  exit(0)
+
+          if __name__ == "__main__":
+              main()
+          PYTHON_SCRIPT
+
+          python check_layers.py
+          echo "violations=$(cat architecture_violations.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" >> $GITHUB_OUTPUT
+
+      - name: Check test coverage requirements
+        id: coverage-check
+        run: |
+          cat > check_coverage.py << 'PYTHON_SCRIPT'
+          import os
+          import json
+          from pathlib import Path
+
+          def check_test_files():
+              """Check if new code files have corresponding tests"""
+              
+              # Get changed files from git
+              import subprocess
+              result = subprocess.run(
+                  ['git', 'diff', '--name-only', 'origin/main...HEAD'],
+                  capture_output=True,
+                  text=True
+              )
+              
+              changed_files = result.stdout.strip().split('\n')
+              
+              missing_tests = []
+              test_patterns = ['.test.', '.spec.', 'test_']
+              
+              for file_path in changed_files:
+                  # Skip if already a test file
+                  if any(pattern in file_path for pattern in test_patterns):
+                      continue
+                  
+                  # Skip non-code files
+                  if not any(file_path.endswith(ext) for ext in ['.py', '.js', '.ts', '.tsx', '.java', '.go']):
+                      continue
+                  
+                  # Skip infrastructure and presentation layers (less critical)
+                  if any(skip in file_path for skip in ['infrastructure', 'presentation', 'api']):
+                      continue
+                  
+                  # Check if test file exists
+                  path = Path(file_path)
+                  test_candidates = [
+                      path.parent / f"{path.stem}.test{path.suffix}",
+                      path.parent / f"{path.stem}.spec{path.suffix}",
+                      path.parent / f"test_{path.name}",
+                      path.parent / '__tests__' / path.name,
+                  ]
+                  
+                  has_test = any(candidate.exists() for candidate in test_candidates)
+                  
+                  if not has_test and ('domain' in file_path or 'application' in file_path or 'use-case' in file_path):
+                      missing_tests.append(file_path)
+              
+              return missing_tests
+
+          def main():
+              missing = check_test_files()
+              
+              if missing:
+                  print(f"⚠️  Found {len(missing)} files without tests:")
+                  for file in missing:
+                      print(f"  - {file}")
+                  
+                  with open('coverage_report.json', 'w') as f:
+                      json.dump({'missing_tests': missing, 'count': len(missing)}, f, indent=2)
+              else:
+                  print("✅ All critical files have tests")
+                  with open('coverage_report.json', 'w') as f:
+                      json.dump({'missing_tests': [], 'count': 0}, f, indent=2)
+
+          if __name__ == "__main__":
+              main()
+          PYTHON_SCRIPT
+
+          python check_coverage.py || echo "Coverage check completed with warnings"
+          echo "missing_tests=$(cat coverage_report.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" >> $GITHUB_OUTPUT
+
+      - name: Security scan
+        id: security-check
+        run: |
+          echo "🔒 Running security checks..."
+          
+          # Check for common security issues
+          SECURITY_ISSUES=0
+          
+          # Check for hardcoded secrets
+          if grep -r -i "password.*=.*['\"][^'\"]*['\"]" --include="*.py" --include="*.js" --include="*.ts" --exclude-dir=node_modules . || \
+             grep -r "api[_-]?key.*=.*['\"][^'\"]*['\"]" --include="*.py" --include="*.js" --include="*.ts" --exclude-dir=node_modules . ; then
+            echo "❌ Found potential hardcoded secrets"
+            SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+          fi
+          
+          # Check for SQL injection risks
+          if grep -r "SELECT.*+.*WHERE" --include="*.py" --include="*.js" --include="*.ts" --exclude-dir=node_modules . ; then
+            echo "❌ Found potential SQL injection vulnerability"
+            SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+          fi
+          
+          echo "security_issues=$SECURITY_ISSUES" >> $GITHUB_OUTPUT
+          
+          if [ "$SECURITY_ISSUES" -gt "0" ]; then
+            echo "⚠️  Found $SECURITY_ISSUES security concerns"
+          else
+            echo "✅ No security issues detected"
+          fi
+
+      - name: Create status check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const violations = parseInt('${{ steps.layer-check.outputs.violations }}' || '0');
+            const missingTests = parseInt('${{ steps.coverage-check.outputs.missing_tests }}' || '0');
+            const securityIssues = parseInt('${{ steps.security-check.outputs.security_issues }}' || '0');
+            
+            const total = violations + securityIssues;
+            const state = total === 0 ? 'success' : 'failure';
+            
+            let description = `Arch: ${violations} violations, Tests: ${missingTests} missing, Security: ${securityIssues} issues`;
+            
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: state,
+              context: 'Clean Architecture Guard',
+              description: description,
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+
+      - name: Comment violations on PR
+        if: steps.layer-check.outputs.violations != '0' || steps.security-check.outputs.security_issues != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let message = '## 🚨 Merge Guard - Issues Detected\n\n';
+            
+            // Add architecture violations
+            if (fs.existsSync('architecture_violations.json')) {
+              const violations = JSON.parse(fs.readFileSync('architecture_violations.json', 'utf8'));
+              if (violations.count > 0) {
+                message += `### ❌ Architecture Violations (${violations.count})\n\n`;
+                for (const v of violations.violations.slice(0, 10)) {
+                  message += `- **${v.file}:${v.line}** - ${v.issue}\n`;
+                }
+                if (violations.count > 10) {
+                  message += `\n... and ${violations.count - 10} more violations\n`;
+                }
+                message += '\n';
+              }
+            }
+            
+            // Add test coverage warnings
+            if (fs.existsSync('coverage_report.json')) {
+              const coverage = JSON.parse(fs.readFileSync('coverage_report.json', 'utf8'));
+              if (coverage.count > 0) {
+                message += `### ⚠️  Missing Tests (${coverage.count})\n\n`;
+                message += 'The following files need tests:\n\n';
+                for (const file of coverage.missing_tests.slice(0, 10)) {
+                  message += `- ${file}\n`;
+                }
+                message += '\n';
+              }
+            }
+            
+            message += '### 📋 Required Actions\n\n';
+            message += '1. Fix all architecture violations\n';
+            message += '2. Add tests for new domain/application logic\n';
+            message += '3. Address security concerns\n';
+            message += '4. Re-run checks\n\n';
+            message += '**This PR cannot be merged until all critical issues are resolved.**';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+
+      - name: Fail if critical issues found
+        if: steps.layer-check.outputs.violations != '0' || steps.security-check.outputs.security_issues != '0'
+        run: |
+          echo "❌ MERGE BLOCKED: Critical issues must be resolved"
+          exit 1
+
+      - name: Success message
+        if: steps.layer-check.outputs.violations == '0' && steps.security-check.outputs.security_issues == '0'
+        run: |
+          echo "✅ All checks passed! PR is ready for review."
+

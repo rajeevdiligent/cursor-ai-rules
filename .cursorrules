@@ -1,0 +1,169 @@
+# Clean Architecture Rules for AI Code Review
+
+## Core Principles
+
+### 1. Dependency Rule
+- Dependencies must point inward only: Presentation → Application → Domain → Infrastructure
+- Inner layers must never depend on outer layers
+- Domain layer must be framework-agnostic and contain no external dependencies
+- Use dependency inversion (interfaces) to maintain proper flow
+
+### 2. Layer Responsibilities
+
+#### Domain Layer (Core)
+- Contains business logic, entities, value objects, and domain services
+- Defines repository interfaces (not implementations)
+- No dependencies on frameworks, databases, or external libraries
+- Pure business rules and domain models
+- Domain events and aggregates
+
+#### Application Layer (Use Cases)
+- Orchestrates domain logic through use cases/interactors
+- Defines application-specific business rules
+- Contains DTOs (Data Transfer Objects) and mappers
+- Coordinates between domain and infrastructure
+- Implements CQRS patterns where applicable
+
+#### Infrastructure Layer
+- Implements repository interfaces defined in domain
+- Contains database access, external API clients, file system operations
+- Framework-specific implementations
+- Third-party integrations
+- Persistence models and ORM configurations
+
+#### Presentation Layer (API/UI)
+- Controllers, presenters, view models
+- Request/response models
+- API routing and middleware
+- Input validation and serialization
+- Authentication/authorization handling
+
+### 3. Code Quality Standards
+
+#### Naming Conventions
+- Use clear, descriptive, intention-revealing names
+- Classes: PascalCase, single responsibility
+- Functions/methods: camelCase, verb phrases
+- Constants: UPPER_SNAKE_CASE
+- Interfaces: Prefix with 'I' or suffix with 'Interface' based on language conventions
+
+#### Function Guidelines
+- Keep functions small (< 20 lines ideally)
+- Single responsibility principle
+- Maximum 3-4 parameters (use objects for more)
+- No side effects in query methods
+- Clear return types
+
+#### Error Handling
+- Use custom domain exceptions
+- Never swallow exceptions without logging
+- Return Result/Either types for expected errors
+- Fail fast for programming errors
+- Provide meaningful error messages
+
+### 4. Testing Requirements
+- Unit tests for domain logic (>80% coverage)
+- Integration tests for infrastructure
+- Use test doubles (mocks, stubs) appropriately
+- Follow AAA pattern (Arrange, Act, Assert)
+- Test file naming: `[filename].test.[ext]` or `[filename].spec.[ext]`
+
+### 5. Design Patterns to Enforce
+- Repository pattern for data access
+- Factory pattern for complex object creation
+- Strategy pattern for interchangeable algorithms
+- Observer pattern for event-driven scenarios
+- Builder pattern for complex DTOs
+
+### 6. Anti-Patterns to Flag
+- God classes (classes doing too much)
+- Anemic domain models (entities with no behavior)
+- Circular dependencies
+- Database-first design
+- Business logic in controllers
+- Direct database queries in use cases
+- Magic numbers and strings
+- Deep nesting (> 3 levels)
+
+### 7. Documentation Requirements
+- All public APIs must have documentation comments
+- Complex business logic must be explained
+- README.md for each layer/module
+- Architecture Decision Records (ADRs) for significant decisions
+- API documentation (OpenAPI/Swagger for REST APIs)
+
+### 8. Security Guidelines
+- Input validation at presentation layer
+- Never trust user input
+- Use parameterized queries (prevent SQL injection)
+- Implement proper authentication and authorization
+- Sensitive data must be encrypted
+- No secrets in code (use environment variables)
+
+### 9. Performance Considerations
+- Avoid N+1 queries
+- Implement caching where appropriate
+- Use pagination for large datasets
+- Lazy loading for expensive operations
+- Profile before optimizing
+
+### 10. Code Review Checklist
+- [ ] Does the code follow the dependency rule?
+- [ ] Are responsibilities properly separated?
+- [ ] Is the code testable?
+- [ ] Are there adequate tests?
+- [ ] Is error handling appropriate?
+- [ ] Are naming conventions followed?
+- [ ] Is the code DRY (Don't Repeat Yourself)?
+- [ ] Are there any security vulnerabilities?
+- [ ] Is the code performant?
+- [ ] Is documentation adequate?
+- [ ] Are design patterns used appropriately?
+- [ ] Are there any code smells?
+
+## Language-Specific Guidelines
+
+### Python
+- Follow PEP 8 style guide
+- Use type hints for all function signatures
+- Use dataclasses for DTOs
+- Virtual environments for dependency management
+- Use ABC (Abstract Base Classes) for interfaces
+
+### TypeScript/JavaScript
+- Use TypeScript strict mode
+- Define interfaces for all contracts
+- Use async/await over promises
+- ESLint and Prettier for code formatting
+- Use dependency injection frameworks
+
+### Rust
+- Follow Rust API Guidelines and style conventions
+- Use traits for abstraction and interface definition
+- Leverage Result<T, E> and Option<T> for error handling
+- Implement the newtype pattern for type safety
+- Use derive macros for common traits (Debug, Clone, etc.)
+- Prefer composition over inheritance
+- Use cargo workspace for multi-crate architectures
+- Implement the repository pattern with trait objects or generics
+- Use async/await with tokio or async-std for I/O operations
+- Employ the builder pattern for complex construction
+- Leverage Rust's ownership system for resource management
+- Use enums with pattern matching for domain modeling
+- Document public APIs with doc comments (///)
+- Run clippy for linting and cargo fmt for formatting
+
+### Go
+- Follow Go Code Review Comments
+- Use interfaces for abstraction
+- Error handling with explicit returns
+- Use context for cancellation
+- Dependency injection via constructors
+
+## Continuous Improvement
+- Regular refactoring sessions
+- Technical debt tracking
+- Performance monitoring
+- Security audits
+- Architecture fitness functions
+

@@ -1,0 +1,193 @@
+{
+  "version": "1.0.0",
+  "name": "Cursor AI Clean Architecture Pack",
+  "description": "Automated code review and clean architecture enforcement using AI",
+  "settings": {
+    "ai": {
+      "model": "claude-sonnet-4.5",
+      "temperature": 0.2,
+      "maxTokens": 4096
+    },
+    "review": {
+      "enabled": true,
+      "autoReview": true,
+      "blockOnViolations": true,
+      "severityThreshold": "warning",
+      "excludePatterns": [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/.git/**",
+        "**/coverage/**",
+        "**/__pycache__/**",
+        "**/*.pyc"
+      ]
+    },
+    "architecture": {
+      "enforceLayerSeparation": true,
+      "layers": {
+        "domain": {
+          "paths": ["src/domain/**", "domain/**", "lib/domain/**"],
+          "allowedDependencies": [],
+          "prohibited": [
+            "database",
+            "api",
+            "http",
+            "express",
+            "fastapi",
+            "django",
+            "spring-boot"
+          ]
+        },
+        "application": {
+          "paths": ["src/application/**", "application/**", "lib/application/**", "src/use-cases/**"],
+          "allowedDependencies": ["domain"],
+          "prohibited": ["database", "orm", "http-client"]
+        },
+        "infrastructure": {
+          "paths": ["src/infrastructure/**", "infrastructure/**", "lib/infrastructure/**"],
+          "allowedDependencies": ["domain", "application"],
+          "prohibited": []
+        },
+        "presentation": {
+          "paths": ["src/presentation/**", "presentation/**", "src/api/**", "src/controllers/**"],
+          "allowedDependencies": ["domain", "application"],
+          "prohibited": ["direct-database-access"]
+        }
+      }
+    },
+    "quality": {
+      "maxFunctionLength": 20,
+      "maxParameterCount": 4,
+      "maxNestingDepth": 3,
+      "maxClassLength": 300,
+      "minTestCoverage": 80,
+      "cyclomaticComplexityThreshold": 10
+    },
+    "naming": {
+      "conventions": {
+        "classes": "PascalCase",
+        "functions": "camelCase",
+        "constants": "UPPER_SNAKE_CASE",
+        "files": "kebab-case"
+      },
+      "patterns": {
+        "repositories": ".*Repository$",
+        "services": ".*Service$",
+        "controllers": ".*Controller$",
+        "useCases": ".*(UseCase|Interactor)$",
+        "entities": ".*Entity$",
+        "valueObjects": ".*VO$"
+      }
+    },
+    "testing": {
+      "required": true,
+      "testFilePatterns": [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/test_*.py"
+      ],
+      "requireTestsForNewCode": true,
+      "minCoverageForNewCode": 80
+    },
+    "documentation": {
+      "requirePublicApiDocs": true,
+      "requireReadme": true,
+      "requireADRs": false,
+      "docPatterns": {
+        "typescript": "/** ... */",
+        "python": "\"\"\" ... \"\"\"",
+        "java": "/** ... */",
+        "go": "// ..."
+      }
+    },
+    "security": {
+      "scanForSecrets": true,
+      "requireInputValidation": true,
+      "requireParameterizedQueries": true,
+      "prohibitedPatterns": [
+        "eval\\(",
+        "exec\\(",
+        "dangerouslySetInnerHTML",
+        "SELECT.*\\+.*WHERE",
+        "password.*=.*['\"].*['\"]"
+      ]
+    },
+    "antiPatterns": {
+      "detect": true,
+      "patterns": [
+        {
+          "name": "God Class",
+          "description": "Class with too many responsibilities",
+          "detector": "class_length > 300 || method_count > 15"
+        },
+        {
+          "name": "Anemic Domain Model",
+          "description": "Entity with only getters/setters",
+          "detector": "domain_entity && only_accessors"
+        },
+        {
+          "name": "Business Logic in Controller",
+          "description": "Controller contains business logic",
+          "detector": "controller && complex_logic"
+        },
+        {
+          "name": "Circular Dependency",
+          "description": "Circular dependency between modules",
+          "detector": "circular_import"
+        }
+      ]
+    }
+  },
+  "rules": {
+    "clean-architecture": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "dependency-inversion": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "single-responsibility": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "open-closed": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "liskov-substitution": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "interface-segregation": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "test-coverage": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "no-magic-numbers": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "proper-error-handling": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "security-best-practices": {
+      "enabled": true,
+      "severity": "error"
+    }
+  },
+  "reporting": {
+    "format": "markdown",
+    "outputFile": "CODE_REVIEW_SUMMARY.md",
+    "includeMetrics": true,
+    "includeRecommendations": true
+  }
+}
+

@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Review outputs
+review_output.json
+review_data.json
+architecture_violations.json
+coverage_report.json
+
+# Generated reports (template should remain)
+CODE_REVIEW_SUMMARY_*.md
+
+# Backup files
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.temp/
+
+# Node (if used for testing)
+node_modules/
+package-lock.json
+yarn.lock
+

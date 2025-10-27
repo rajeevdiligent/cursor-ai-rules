@@ -1,0 +1,326 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - develop
+      - master
+  push:
+    branches:
+      - main
+      - develop
+      - master
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-code-review:
+    name: AI-Powered Code Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests anthropic openai
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            **/*.py
+            **/*.js
+            **/*.ts
+            **/*.tsx
+            **/*.java
+            **/*.go
+            **/*.rs
+            **/*.cs
+            **/*.rb
+          files_ignore: |
+            **/*.test.*
+            **/*.spec.*
+            **/test_*.py
+            **/__tests__/**
+            **/node_modules/**
+            **/dist/**
+            **/build/**
+
+      - name: Analyze code structure
+        id: analyze
+        run: |
+          echo "Analyzing code structure and dependencies..."
+          
+          # Count files by layer
+          DOMAIN_FILES=$(find . -path "*/domain/*" -type f | wc -l || echo "0")
+          APP_FILES=$(find . -path "*/application/*" -o -path "*/use-cases/*" -type f | wc -l || echo "0")
+          INFRA_FILES=$(find . -path "*/infrastructure/*" -type f | wc -l || echo "0")
+          PRESENT_FILES=$(find . -path "*/presentation/*" -o -path "*/api/*" -o -path "*/controllers/*" -type f | wc -l || echo "0")
+          
+          echo "domain_files=$DOMAIN_FILES" >> $GITHUB_OUTPUT
+          echo "app_files=$APP_FILES" >> $GITHUB_OUTPUT
+          echo "infra_files=$INFRA_FILES" >> $GITHUB_OUTPUT
+          echo "present_files=$PRESENT_FILES" >> $GITHUB_OUTPUT
+
+      - name: Run AI Code Review
+        id: ai-review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          cat > review_request.py << 'PYTHON_SCRIPT'
+          import os
+          import json
+          import sys
+          from pathlib import Path
+
+          try:
+              import anthropic
+              USE_ANTHROPIC = True
+          except ImportError:
+              USE_ANTHROPIC = False
+
+          try:
+              import openai
+              USE_OPENAI = True
+          except ImportError:
+              USE_OPENAI = False
+
+          def load_rules():
+              """Load .cursorrules file"""
+              rules_path = Path('.cursorrules')
+              if rules_path.exists():
+                  return rules_path.read_text()
+              return ""
+
+          def load_config():
+              """Load cursor.json configuration"""
+              config_path = Path('cursor.json')
+              if config_path.exists():
+                  return json.loads(config_path.read_text())
+              return {}
+
+          def read_file_content(file_path):
+              """Read file content safely"""
+              try:
+                  with open(file_path, 'r', encoding='utf-8') as f:
+                      return f.read()
+              except Exception as e:
+                  return f"Error reading file: {e}"
+
+          def analyze_with_ai(files, rules, config):
+              """Analyze code using AI"""
+              
+              # Prepare prompt
+              files_content = ""
+              for file_path in files[:10]:  # Limit to 10 files to avoid token limits
+                  content = read_file_content(file_path)
+                  files_content += f"\n\n### File: {file_path}\n```\n{content[:2000]}\n```\n"
+              
+              prompt = f"""
+              You are an expert code reviewer focusing on Clean Architecture principles and code quality.
+              
+              Review the following code changes according to these rules:
+              {rules[:2000]}
+              
+              Configuration:
+              {json.dumps(config.get('rules', {}), indent=2)}
+              
+              Files to review:
+              {files_content}
+              
+              Provide a structured review in JSON format with:
+              {{
+                "metrics": {{
+                  "total_files": <number>,
+                  "total_lines": <number>,
+                  "test_coverage": <percentage>,
+                  "avg_complexity": <number>
+                }},
+                "issues": [
+                  {{
+                    "category": "architecture|code_quality|testing|security|documentation",
+                    "severity": "critical|error|warning|info",
+                    "message": "Issue description",
+                    "file": "file path",
+                    "line": <line number or null>,
+                    "suggestion": "How to fix",
+                    "rule_id": "rule identifier"
+                  }}
+                ],
+                "summary": "Overall review summary"
+              }}
+              """
+              
+              # Use Anthropic Claude if available
+              if USE_ANTHROPIC and os.getenv('ANTHROPIC_API_KEY'):
+                  client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                  message = client.messages.create(
+                      model="claude-sonnet-4-20250514",
+                      max_tokens=4096,
+                      messages=[{"role": "user", "content": prompt}]
+                  )
+                  return message.content[0].text
+              
+              # Fallback to OpenAI
+              elif USE_OPENAI and os.getenv('OPENAI_API_KEY'):
+                  client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                  response = client.chat.completions.create(
+                      model="gpt-4-turbo-preview",
+                      messages=[{"role": "user", "content": prompt}],
+                      max_tokens=4096
+                  )
+                  return response.choices[0].message.content
+              
+              else:
+                  return json.dumps({
+                      "metrics": {"total_files": len(files), "total_lines": 0},
+                      "issues": [{
+                          "category": "configuration",
+                          "severity": "error",
+                          "message": "No AI API key configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY",
+                          "file": "workflow",
+                          "line": None,
+                          "suggestion": "Configure API keys in repository secrets"
+                      }],
+                      "summary": "AI review skipped - no API key"
+                  })
+
+          def main():
+              files = os.getenv('CHANGED_FILES', '').split()
+              if not files:
+                  print(json.dumps({"metrics": {}, "issues": [], "summary": "No files to review"}))
+                  return
+              
+              rules = load_rules()
+              config = load_config()
+              
+              result = analyze_with_ai(files, rules, config)
+              
+              # Extract JSON from response (may be wrapped in markdown)
+              if '```json' in result:
+                  result = result.split('```json')[1].split('```')[0].strip()
+              elif '```' in result:
+                  result = result.split('```')[1].split('```')[0].strip()
+              
+              print(result)
+
+          if __name__ == "__main__":
+              main()
+          PYTHON_SCRIPT
+
+          python review_request.py > review_output.json
+          cat review_output.json
+
+      - name: Parse review results
+        run: |
+          if [ -f "review_parser.py" ]; then
+            python review_parser.py --input review_output.json --output CODE_REVIEW_SUMMARY.md
+          else
+            echo "review_parser.py not found, skipping detailed parsing"
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let reviewSummary = '';
+            if (fs.existsSync('CODE_REVIEW_SUMMARY.md')) {
+              reviewSummary = fs.readFileSync('CODE_REVIEW_SUMMARY.md', 'utf8');
+            } else {
+              reviewSummary = fs.readFileSync('review_output.json', 'utf8');
+              reviewSummary = '```json\n' + reviewSummary + '\n```';
+            }
+            
+            // Truncate if too long (GitHub comment limit)
+            if (reviewSummary.length > 65000) {
+              reviewSummary = reviewSummary.substring(0, 65000) + '\n\n... (truncated)';
+            }
+            
+            const comment = `## 🤖 AI Code Review Results\n\n${reviewSummary}`;
+            
+            // Find existing comment and update or create new
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 AI Code Review Results')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+      - name: Check review status
+        run: |
+          # Parse review output to determine pass/fail
+          CRITICAL_COUNT=$(python3 -c "
+          import json
+          import sys
+          try:
+              with open('review_output.json') as f:
+                  data = json.load(f)
+              critical = sum(1 for issue in data.get('issues', []) if issue.get('severity') == 'critical')
+              error = sum(1 for issue in data.get('issues', []) if issue.get('severity') == 'error')
+              print(critical + error)
+          except:
+              print(0)
+          " || echo "0")
+          
+          echo "Critical/Error issues found: $CRITICAL_COUNT"
+          
+          if [ "$CRITICAL_COUNT" -gt "0" ]; then
+            echo "❌ Review FAILED: Found $CRITICAL_COUNT critical or error issues"
+            exit 1
+          else
+            echo "✅ Review PASSED"
+          fi
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-review-results
+          path: |
+            review_output.json
+            CODE_REVIEW_SUMMARY.md
+          retention-days: 30
+
