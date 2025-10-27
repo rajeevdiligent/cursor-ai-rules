@@ -1,3 +1,8 @@
+# Environment variables (SECURITY: Never commit tokens/secrets!)
+.env
+.env.*
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -17,48 +22,85 @@ htmlcov/
 dist/
 build/
 
-# Review outputs
+# TypeScript/JavaScript
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.tsbuildinfo
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Review outputs and test data
 review_output.json
 review_data.json
 architecture_violations.json
 coverage_report.json
 
-# Generated reports (template should remain)
+# Generated reports (keep template)
 CODE_REVIEW_SUMMARY_*.md
 
-# Backup files
+# Backup and archive files
 *.bak
 *.backup
 *.swp
 *.swo
 *~
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*-bundle.*
 
-# IDE
+# IDE and Editor
 .vscode/
 .idea/
 *.iml
-.DS_Store
+.fleet/
+.cursor/
+*.sublime-*
 
-# OS
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 desktop.ini
-
-# Environment variables (SECURITY: Never commit tokens/secrets!)
-.env
-.env.local
-.env.*.local
 
 # Logs
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Temporary files
 tmp/
 temp/
 .temp/
+*.tmp
 
-# Node (if used for testing)
-node_modules/
-package-lock.json
-yarn.lock
+# Test coverage
+coverage/
+.nyc_output/
 
+# Documentation build
+docs/_build/
+site/
+
+# Local configuration (if any)
+local.settings.json
+.vscode/settings.json
