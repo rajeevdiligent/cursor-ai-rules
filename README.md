@@ -53,30 +53,6 @@ Edit `cursor.json` to match your project structure:
 
 Modify `.cursorrules` to add project-specific guidelines and requirements.
 
-## 🏗️ Clean Architecture Layers
-
-This pack enforces a four-layer architecture:
-
-```
-┌─────────────────────────────────────┐
-│      Presentation Layer             │  ← Controllers, API, UI
-├─────────────────────────────────────┤
-│      Application Layer              │  ← Use Cases, Business Logic
-├─────────────────────────────────────┤
-│      Domain Layer (Core)            │  ← Entities, Value Objects
-├─────────────────────────────────────┤
-│      Infrastructure Layer           │  ← Database, External Services
-└─────────────────────────────────────┘
-```
-
-### Dependency Rule
-
-**Dependencies must point inward only:**
-- ✅ Presentation → Application → Domain
-- ✅ Infrastructure → Domain
-- ❌ Domain → Infrastructure (VIOLATION)
-- ❌ Application → Presentation (VIOLATION)
-
 ## 🔍 Features
 
 ### AI Code Review (`ai_review.yml`)
@@ -108,6 +84,30 @@ Blocks merges when:
 2. Test coverage requirements
 3. Security pattern scanning
 4. Code smell detection
+
+## 🏗️ Clean Architecture Layers
+
+This pack enforces a four-layer architecture:
+
+```
+┌─────────────────────────────────────┐
+│      Presentation Layer             │  ← Controllers, API, UI
+├─────────────────────────────────────┤
+│      Application Layer              │  ← Use Cases, Business Logic
+├─────────────────────────────────────┤
+│      Domain Layer (Core)            │  ← Entities, Value Objects
+├─────────────────────────────────────┤
+│      Infrastructure Layer           │  ← Database, External Services
+└─────────────────────────────────────┘
+```
+
+### Dependency Rule
+
+**Dependencies must point inward only:**
+- ✅ Presentation → Application → Domain
+- ✅ Infrastructure → Domain
+- ❌ Domain → Infrastructure (VIOLATION)
+- ❌ Application → Presentation (VIOLATION)
 
 ## 📊 Review Metrics
 
