@@ -36,28 +36,33 @@ gh secret set ANTHROPIC_API_KEY
 
 ### 3. Update Project Paths (Optional)
 
-Edit `cursor.json` if your project structure differs:
+Edit `cursor.json` to match your actual project structure. Update the `paths` array for each layer:
 
 ```json
 {
   "architecture": {
     "layers": {
       "domain": {
-        "paths": ["src/domain/**"]
+        "paths": ["src/domain/**"]           // Your domain/core directory
       },
       "application": {
-        "paths": ["src/application/**"]
+        "paths": ["src/application/**"]      // Your use-cases/services directory
       },
       "infrastructure": {
-        "paths": ["src/infrastructure/**"]
+        "paths": ["src/infrastructure/**"]   // Your database/API directory
       },
       "presentation": {
-        "paths": ["src/api/**"]
+        "paths": ["src/api/**"]              // Your controllers/routes directory
       }
     }
   }
 }
 ```
+
+**Examples of different structures:**
+- Python: `["app/domain/**"]` or `["domain/**"]`
+- TypeScript: `["packages/domain/**"]` for monorepos
+- Rust: `["crates/domain/**"]` for workspace projects
 
 ## 🤖 How It Works
 
