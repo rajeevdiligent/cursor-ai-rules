@@ -73,13 +73,7 @@ chmod +x review_parser.py
 echo -e "${GREEN}✅ Made review_parser.py executable${NC}"
 echo ""
 
-# Copy template (don't overwrite if exists)
-if [ ! -f "CODE_REVIEW_SUMMARY.md" ]; then
-    cp "$SCRIPT_DIR/CODE_REVIEW_SUMMARY.md" "CODE_REVIEW_SUMMARY.md"
-    echo -e "${GREEN}✅ Created CODE_REVIEW_SUMMARY.md template${NC}"
-else
-    echo -e "${BLUE}ℹ️  CODE_REVIEW_SUMMARY.md already exists, skipping${NC}"
-fi
+echo -e "${BLUE}ℹ️  Note: CODE_REVIEW_SUMMARY.md will be generated automatically by workflows${NC}"
 echo ""
 
 # Detect project structure
