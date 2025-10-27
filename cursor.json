@@ -99,8 +99,7 @@
       "docPatterns": {
         "typescript": "/** ... */",
         "python": "\"\"\" ... \"\"\"",
-        "java": "/** ... */",
-        "go": "// ..."
+        "rust": "/// ..."
       }
     },
     "security": {

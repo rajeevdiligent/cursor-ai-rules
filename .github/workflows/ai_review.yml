@@ -50,11 +50,8 @@ jobs:
             **/*.js
             **/*.ts
             **/*.tsx
-            **/*.java
-            **/*.go
+            **/*.jsx
             **/*.rs
-            **/*.cs
-            **/*.rb
           files_ignore: |
             **/*.test.*
             **/*.spec.*

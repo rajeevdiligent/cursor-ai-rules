@@ -43,6 +43,11 @@ CODE_REVIEW_SUMMARY_*.md
 Thumbs.db
 desktop.ini
 
+# Environment variables (SECURITY: Never commit tokens/secrets!)
+.env
+.env.local
+.env.*.local
+
 # Logs
 *.log
 logs/

@@ -92,12 +92,6 @@ if [ -f "package.json" ]; then
 elif [ -f "requirements.txt" ] || [ -f "setup.py" ] || [ -f "pyproject.toml" ]; then
     PROJECT_TYPE="python"
     echo -e "   ${GREEN}Detected: Python project${NC}"
-elif [ -f "go.mod" ]; then
-    PROJECT_TYPE="go"
-    echo -e "   ${GREEN}Detected: Go project${NC}"
-elif [ -f "pom.xml" ] || [ -f "build.gradle" ]; then
-    PROJECT_TYPE="java"
-    echo -e "   ${GREEN}Detected: Java project${NC}"
 elif [ -f "Cargo.toml" ]; then
     PROJECT_TYPE="rust"
     echo -e "   ${GREEN}Detected: Rust project${NC}"

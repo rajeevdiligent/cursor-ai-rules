@@ -153,13 +153,6 @@
 - Document public APIs with doc comments (///)
 - Run clippy for linting and cargo fmt for formatting
 
-### Go
-- Follow Go Code Review Comments
-- Use interfaces for abstraction
-- Error handling with explicit returns
-- Use context for cancellation
-- Dependency injection via constructors
-
 ## Continuous Improvement
 - Regular refactoring sessions
 - Technical debt tracking

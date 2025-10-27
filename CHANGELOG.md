@@ -27,11 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for multiple programming languages:
   - Python
   - TypeScript/JavaScript
-  - Java
-  - Go
-  - C#
   - Rust
-  - Ruby
 
 ### Features
 - **Layer Dependency Validation**: Enforces proper dependency flow between layers
