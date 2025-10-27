@@ -77,15 +77,22 @@ The review happens automatically within minutes of creating or updating a PR.
 
 ## 📝 Project Structure
 
-Organize your code into these layers:
+Organize your code with cursor-ai-rules files at the root:
 
 ```
 your-project/
+├── .cursorrules                    # Clean Architecture rules (copied)
+├── cursor.json                     # AI review configuration (copied)
+├── review_parser.py                # Review analyzer script (copied)
+├── .github/
+│   └── workflows/
+│       ├── ai_review.yml          # AI code review workflow (copied)
+│       └── ai_merge_guard.yml     # Architecture guard workflow (copied)
 ├── src/
-│   ├── domain/           # Business logic (no external dependencies)
-│   ├── application/      # Use cases, orchestration
-│   ├── infrastructure/   # Database, APIs, external services
-│   └── presentation/     # Controllers, API routes
+│   ├── domain/                    # Business logic (no external dependencies)
+│   ├── application/               # Use cases, orchestration
+│   ├── infrastructure/            # Database, APIs, external services
+│   └── presentation/              # Controllers, API routes
 └── tests/
 ```
 
