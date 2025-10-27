@@ -59,6 +59,22 @@ Edit `cursor.json` if your project structure differs:
 }
 ```
 
+## 🤖 How It Works
+
+When you create a pull request, the workflow:
+
+1. **Sends your code changes** to Claude AI (or GPT-4 if using OpenAI)
+2. **AI analyzes** the code against Clean Architecture rules in `.cursorrules`
+3. **Generates review feedback** with:
+   - Architecture violations
+   - SOLID principle issues
+   - Security vulnerabilities
+   - Code quality problems
+   - Suggestions for fixes
+4. **Posts comments** directly on your PR
+
+The review happens automatically within minutes of creating or updating a PR.
+
 ## 📝 Project Structure
 
 Organize your code into these layers:
