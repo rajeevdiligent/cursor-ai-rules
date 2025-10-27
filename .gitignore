@@ -47,7 +47,11 @@ review_data.json
 architecture_violations.json
 coverage_report.json
 
-# Generated reports (keep template)
+# Pack-specific files (not needed in user projects)
+CHANGELOG.md
+CODE_REVIEW_SUMMARY.md
+
+# Generated reports
 CODE_REVIEW_SUMMARY_*.md
 
 # Backup and archive files
