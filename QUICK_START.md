@@ -1,342 +1,176 @@
 # Quick Start Guide
 
-Get up and running with Cursor AI Clean Architecture Pack in 5 minutes!
+Get Clean Architecture enforcement running in your project in 5 minutes.
 
-## ⚡ Quick Install
+## 🚀 Installation
 
-### Option 1: Automated Installation (Recommended)
-
-```bash
-# Clone or download this pack
-cd your-project-root
-
-# Run the installer
-./path/to/cursor-ai-clean-architecture-pack/install.sh
-```
-
-The installer will:
-- ✅ Copy all necessary files
-- ✅ Detect your project structure
-- ✅ Create required directories
-- ✅ Make scripts executable
-- ✅ Provide customization guidance
-
-### Option 2: Manual Installation
+### 1. Copy Files to Your Project
 
 ```bash
 cd your-project-root
 
-# Copy core files
-cp path/to/pack/.cursorrules .
-cp path/to/pack/cursor.json .
-cp path/to/pack/review_parser.py .
+# Copy configuration files
+curl -O https://raw.githubusercontent.com/rajeevdiligent/cursor-ai-rules/main/.cursorrules
+curl -O https://raw.githubusercontent.com/rajeevdiligent/cursor-ai-rules/main/cursor.json
+curl -O https://raw.githubusercontent.com/rajeevdiligent/cursor-ai-rules/main/review_parser.py
 
-# Copy workflows
+# Copy GitHub workflows
 mkdir -p .github/workflows
-cp path/to/pack/.github/workflows/*.yml .github/workflows/
+curl -o .github/workflows/ai_review.yml https://raw.githubusercontent.com/rajeevdiligent/cursor-ai-rules/main/.github/workflows/ai_review.yml
+curl -o .github/workflows/ai_merge_guard.yml https://raw.githubusercontent.com/rajeevdiligent/cursor-ai-rules/main/.github/workflows/ai_merge_guard.yml
 
-# Make scripts executable
+# Make script executable
 chmod +x review_parser.py
 ```
 
-## 🔑 Configure API Keys
+### 2. Configure AI API Key
 
-Choose one AI provider:
+Get an API key from [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/), then add it to your GitHub repository:
 
-### Option A: Anthropic Claude (Recommended)
+```bash
+# Using GitHub CLI
+gh secret set ANTHROPIC_API_KEY
 
-1. Get API key from https://console.anthropic.com/
-2. Add to GitHub:
-   ```bash
-   # Using GitHub CLI
-   gh secret set ANTHROPIC_API_KEY
-   
-   # Or manually:
-   # Go to: Your Repo → Settings → Secrets → New repository secret
-   # Name: ANTHROPIC_API_KEY
-   # Value: your-api-key
-   ```
+# Or go to: Repository → Settings → Secrets → Actions → New secret
+```
 
-### Option B: OpenAI GPT-4
+### 3. Update Project Paths (Optional)
 
-1. Get API key from https://platform.openai.com/
-2. Add to GitHub:
-   ```bash
-   gh secret set OPENAI_API_KEY
-   ```
-
-## 📁 Update Project Paths
-
-Edit `cursor.json` to match your structure:
+Edit `cursor.json` if your project structure differs:
 
 ```json
 {
   "architecture": {
     "layers": {
       "domain": {
-        "paths": ["src/domain/**", "your-path/**"]
+        "paths": ["src/domain/**"]
       },
       "application": {
-        "paths": ["src/application/**", "your-path/**"]
+        "paths": ["src/application/**"]
+      },
+      "infrastructure": {
+        "paths": ["src/infrastructure/**"]
+      },
+      "presentation": {
+        "paths": ["src/api/**"]
       }
     }
   }
 }
 ```
 
-## 🧪 Test It Out
+## 📝 Project Structure
 
-1. **Create a test branch:**
-   ```bash
-   git checkout -b test-ai-review
-   ```
+Organize your code into these layers:
 
-2. **Make a small change:**
-   ```bash
-   echo "// Test change" >> src/domain/test.ts
-   git add .
-   git commit -m "Test AI review"
-   git push origin test-ai-review
-   ```
+```
+your-project/
+├── src/
+│   ├── domain/           # Business logic (no external dependencies)
+│   ├── application/      # Use cases, orchestration
+│   ├── infrastructure/   # Database, APIs, external services
+│   └── presentation/     # Controllers, API routes
+└── tests/
+```
 
-3. **Create a PR:**
-   - Go to GitHub and create a PR
-   - Wait for the AI review workflow to run
-   - Check the PR comments for the review results
+## ✅ Test It
 
-## 📊 Example: Good vs Bad Code
+Create a PR and the AI will automatically review it:
 
-### ❌ Bad: Violation Example
+```bash
+git checkout -b feature/test-review
+echo "# Test" > src/domain/test.ts
+git add .
+git commit -m "Test AI review"
+git push origin feature/test-review
+```
 
+Create a pull request on GitHub and check for AI review comments.
+
+## 📚 Clean Architecture Rules
+
+### ✅ DO
+- Keep domain layer pure (no framework dependencies)
+- Use interfaces in domain, implement in infrastructure
+- Handle errors with Result/Option types
+- Write tests for domain logic
+
+### ❌ DON'T
+- Import infrastructure in domain layer
+- Put business logic in controllers
+- Use direct database access in use cases
+- Create circular dependencies
+
+## 🔍 Example: Repository Pattern
+
+**❌ Wrong:**
 ```typescript
-// src/domain/user.ts
-import { database } from '../infrastructure/database';  // VIOLATION!
+// domain/user.ts
+import { db } from '../infrastructure/database';  // VIOLATION!
 
 export class User {
   async save() {
-    await database.execute('INSERT INTO users...');  // Domain shouldn't know about DB
+    await db.query('INSERT...');  // Domain knows about DB
   }
 }
 ```
 
-The AI will flag this as:
-- **Violation**: Domain layer importing from Infrastructure
-- **Severity**: Error
-- **Suggestion**: Use repository pattern with dependency injection
-
-### ✅ Good: Correct Implementation
-
+**✅ Correct:**
 ```typescript
-// src/domain/user.ts - Pure domain logic
+// domain/user.ts
 export class User {
-  constructor(
-    private id: string,
-    private name: string,
-    private email: string
-  ) {}
+  constructor(public id: string, public email: string) {}
   
-  validate(): void {
-    if (!this.email.includes('@')) {
-      throw new InvalidEmailError();
-    }
+  validate() {
+    if (!this.email.includes('@')) throw new Error('Invalid email');
   }
 }
 
-// src/domain/repositories/user-repository.ts - Interface in domain
+// domain/repositories/user-repository.ts
 export interface UserRepository {
   save(user: User): Promise<void>;
-  findById(id: string): Promise<User | null>;
 }
 
-// src/infrastructure/user-repository-impl.ts - Implementation in infrastructure
+// infrastructure/user-repository-impl.ts
 export class UserRepositoryImpl implements UserRepository {
-  constructor(private database: Database) {}
+  constructor(private db: Database) {}
   
   async save(user: User): Promise<void> {
-    await this.database.execute('INSERT INTO users...', user);
+    await this.db.query('INSERT...', user);
   }
 }
 
-// src/application/create-user-use-case.ts - Use case orchestrates
+// application/create-user-use-case.ts
 export class CreateUserUseCase {
   constructor(private userRepo: UserRepository) {}
   
-  async execute(dto: CreateUserDTO): Promise<void> {
-    const user = new User(dto.id, dto.name, dto.email);
+  async execute(email: string): Promise<void> {
+    const user = new User(uuid(), email);
     user.validate();
     await this.userRepo.save(user);
   }
 }
 ```
 
-## 🎯 Common Tasks
+## 🛠️ Troubleshooting
 
-### View Review Results
+**Workflow not running?**
+- Enable GitHub Actions: Settings → Actions → General → Allow all actions
 
-```bash
-# Download artifact from GitHub Actions
-gh run download [run-id]
+**No AI comments?**
+- Verify API key: `gh secret list`
+- Check workflow logs: Actions tab → Latest run
 
-# Or view in PR comments
-# The AI posts results directly on your PR
-```
+**False positives?**
+- Add project-specific rules to `.cursorrules`
+- Adjust thresholds in `cursor.json`
 
-### Run Manual Review
+## 📖 Learn More
 
-```bash
-# Generate review data (you'll need to create this JSON)
-python review_parser.py \
-  --input review_data.json \
-  --output CODE_REVIEW_SUMMARY.md
-```
-
-### Customize Rules
-
-Edit `.cursorrules` to add project-specific rules:
-
-```markdown
-## Project-Specific Rules
-
-### API Endpoints
-- All endpoints must use versioning: /api/v1/...
-- Use DTOs for all request/response bodies
-- Implement rate limiting on public endpoints
-
-### Testing
-- Integration tests required for all repositories
-- E2E tests required for critical user flows
-```
-
-### Adjust Quality Thresholds
-
-Edit `cursor.json`:
-
-```json
-{
-  "quality": {
-    "maxFunctionLength": 30,        // Increase if needed
-    "maxParameterCount": 5,         // Adjust based on team preference
-    "minTestCoverage": 70           // Lower for legacy projects
-  }
-}
-```
-
-## 🔧 Troubleshooting
-
-### Workflow Not Running?
-
-1. Check GitHub Actions are enabled:
-   - Go to: Settings → Actions → General
-   - Allow all actions
-
-2. Check branch protection:
-   - Workflows must run on protected branches
-   - Add status checks if needed
-
-### No Review Comments?
-
-1. Verify API key is set:
-   ```bash
-   gh secret list
-   # Should show ANTHROPIC_API_KEY or OPENAI_API_KEY
-   ```
-
-2. Check workflow logs:
-   - Go to Actions tab
-   - Click on the failed run
-   - Review error messages
-
-### False Positives?
-
-1. Update `.cursorrules` to clarify expectations
-2. Adjust `cursor.json` settings
-3. Add comments in code explaining exceptions
-4. Consider lowering severity thresholds
-
-### Rate Limits?
-
-If you hit API rate limits:
-1. Reduce `maxTokens` in `cursor.json`
-2. Limit files reviewed (check workflow file)
-3. Add cooldown between reviews
-
-## 📚 Next Steps
-
-1. **Read the full README.md** for comprehensive documentation
-2. **Customize rules** for your team's needs
-3. **Enable branch protection** to enforce reviews
-4. **Share with your team** and gather feedback
-5. **Iterate on rules** based on actual violations
-
-## 🎓 Learn More
-
-### Understanding Clean Architecture
-
-**The Dependency Rule:**
-```
-Outer layers depend on inner layers, never the reverse.
-
-Presentation → Application → Domain ← Infrastructure
-                              ↑
-                            Core
-                     (No dependencies)
-```
-
-### Layer Responsibilities
-
-1. **Domain (Core)**
-   - Business entities
-   - Business rules
-   - Domain events
-   - No framework dependencies
-
-2. **Application**
-   - Use cases
-   - Business workflows
-   - DTOs and mappers
-   - Orchestration logic
-
-3. **Infrastructure**
-   - Database implementations
-   - External APIs
-   - File systems
-   - Framework specifics
-
-4. **Presentation**
-   - Controllers
-   - API routes
-   - Request/response handling
-   - UI components
-
-## 💡 Tips for Success
-
-1. **Start Small**: Enable for one service/module first
-2. **Educate Team**: Share clean architecture resources
-3. **Iterate Rules**: Adjust based on real violations
-4. **Use Examples**: Reference good patterns in code reviews
-5. **Be Consistent**: Apply rules uniformly across codebase
-
-## 🆘 Getting Help
-
-- **Check documentation**: README.md has detailed examples
-- **Review workflows**: Look at workflow logs for errors
-- **Open an issue**: Report bugs or request features
-- **Ask the team**: Share knowledge and solutions
-
-## ✅ Success Checklist
-
-- [ ] Files copied to project root
-- [ ] API key configured in GitHub Secrets
-- [ ] `cursor.json` paths updated for your project
-- [ ] Test PR created and reviewed
-- [ ] Review comments appear on PR
-- [ ] Team members understand the rules
-- [ ] Branch protection configured (optional)
-- [ ] Customized rules for your project
+- **Full Documentation:** [README.md](./README.md)
+- **Clean Architecture:** [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- **Language Support:** Python, TypeScript/JavaScript, Rust
 
 ---
 
-**You're all set! 🎉**
-
-Create a PR and watch the AI review your code for Clean Architecture compliance!
-
+**Ready!** Your project now has AI-powered Clean Architecture enforcement. Create a PR to see it in action! 🎉
