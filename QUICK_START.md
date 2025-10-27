@@ -6,6 +6,27 @@ Get Clean Architecture enforcement running in your project in 5 minutes.
 
 ### 1. Copy Files to Your Project
 
+## 📝 Project Structure
+
+Organize your code with cursor-ai-rules files at the root:
+
+```
+your-project/
+├── .cursorrules                    # Clean Architecture rules (copied)
+├── cursor.json                     # AI review configuration (copied)
+├── review_parser.py                # Review analyzer script (copied)
+├── .github/
+│   └── workflows/
+│       ├── ai_review.yml          # AI code review workflow (copied)
+│       └── ai_merge_guard.yml     # Architecture guard workflow (copied)
+├── src/
+│   ├── domain/                    # Business logic (no external dependencies)
+│   ├── application/               # Use cases, orchestration
+│   ├── infrastructure/            # Database, APIs, external services
+│   └── presentation/              # Controllers, API routes
+└── tests/
+```
+
 ```bash
 cd your-project-root
 
@@ -64,27 +85,6 @@ Edit `cursor.json` to match your actual project structure. Update the `paths` ar
 - TypeScript: `["packages/domain/**"]` for monorepos
 - Rust: `["crates/domain/**"]` for workspace projects
 
-## 📝 Project Structure
-
-Organize your code with cursor-ai-rules files at the root:
-
-```
-your-project/
-├── .cursorrules                    # Clean Architecture rules (copied)
-├── cursor.json                     # AI review configuration (copied)
-├── review_parser.py                # Review analyzer script (copied)
-├── .github/
-│   └── workflows/
-│       ├── ai_review.yml          # AI code review workflow (copied)
-│       └── ai_merge_guard.yml     # Architecture guard workflow (copied)
-├── src/
-│   ├── domain/                    # Business logic (no external dependencies)
-│   ├── application/               # Use cases, orchestration
-│   ├── infrastructure/            # Database, APIs, external services
-│   └── presentation/              # Controllers, API routes
-└── tests/
-```
-
 ## 🤖 How It Works
 
 When you create a pull request, the workflow:
@@ -100,6 +100,8 @@ When you create a pull request, the workflow:
 4. **Posts comments** directly on your PR
 
 The review happens automatically within minutes of creating or updating a PR.
+
+
 
 ## ✅ Test It
 
